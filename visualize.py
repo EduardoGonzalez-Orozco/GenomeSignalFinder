@@ -1,8 +1,14 @@
 
+#####Notes V1.1
+# Eliminating the option --first, so the code will know which was the first level in scan
+
+
+
 
 import numpy as np
 from IPython.display import SVG, display
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from scipy.signal import argrelextrema
 import matplotlib.cm as cm
@@ -22,7 +28,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Input name should correspond as the same name used in scan or in case of breaker use the generated name before __decomposition_table.pkl or peak_Ids.pkl")
     parser.add_argument("--level", required=True, help="Selected level to visualze")
-    parser.add_argument("--first", required=True, help="First level of the decomposition table, must be the same as scan")
 
 
    
@@ -41,18 +46,18 @@ with open(f'{args.input}_peak_Ids.pkl', "rb") as file:
 
 
 level=int(args.level)
-firstLevel=int(args.first)
 
-levelTV=level -firstLevel## Must based on the position ofthe decomposition table (decide which level to visualize)
 
 # ###Input: Table peak detection
-dataTV=resultsAll[levelTV]
 
 ###Input: Decompositon table
 dataOTV = reconstructVals_results[:,level+2]
 posFOTV=reconstructVals_results[:,0]
 cmPosOTV=reconstructVals_results[:,1]
  
+firstLevel=int(resultsAll[0][0][8])
+levelTV=level -firstLevel## Must based on the position ofthe decomposition table (decide which level to visualize)
+dataTV=resultsAll[levelTV]
 
 ## Selectin the values for peaks
 startTV = [subarray[0] for subarray in dataTV]
