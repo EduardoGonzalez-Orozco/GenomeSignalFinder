@@ -258,8 +258,6 @@ length = [[subarray[5] for subarray in sublist] for sublist in resultsAll]
 empower = [[subarray[7] for subarray in sublist] for sublist in resultsAll]
 ####### Plot variance Empower vs Length 
 
-import numpy as np
-import matplotlib.pyplot as plt
 
 # range(firstLevel, levels)
 
