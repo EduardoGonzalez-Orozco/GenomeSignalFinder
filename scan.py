@@ -11,6 +11,8 @@
 ##################################################################
 ####NOTES:
 #-> Elimininate a bug located in the signal size detection also some "trash" lines 
+##V1.1
+# -> Eliminate the use of --first in visualize and break (Working on...)
 
 
 import sys
@@ -92,7 +94,7 @@ numDforRecon=2 #Min must be 2
 #Thresholding mehod
 threshMode=args.tmode
 #Number of sd  from mean to filter
-sdF=args.sd
+sdF=int(args.sd)
 #Wavelet type
 waveType=args.wavelet
 
@@ -182,7 +184,8 @@ for p in range(firstLevel, levels):
 
 
     ##Generating the joined table results for peaks
-    peakDetectionResultsT = np.column_stack((peak_start_indices, peak_end_indices, maxima_indices))
+    firstLevelColumn= np.full(len(peak_end_indices), firstLevel)
+    peakDetectionResultsT = np.column_stack((peak_start_indices, peak_end_indices, maxima_indices,firstLevelColumn))
 
    ###No unique filer Si quieres filro debes comentar esta sección:
     peakDetectionResults=peakDetectionResultsT
@@ -208,12 +211,14 @@ for p in range(firstLevel, levels):
         startI = peakDetectionResults[a, 0]
         endI = peakDetectionResults[a, 1]
         maxPos=peakDetectionResults[a, 2]
+        firstL=peakDetectionResults[a, 3]
 
         start = reconstructVals_results[startI, 0]
         end = reconstructVals_results[endI, 0]
 
         startcm = reconstructVals_results[startI, 1]
         endcm = reconstructVals_results[endI, 1]
+
         noiseValIndex = 1
 
         maskSignal = (reconstructVals_results[:, 0] >= start) & (reconstructVals_results[:, 0] <= end)
@@ -227,7 +232,7 @@ for p in range(firstLevel, levels):
         difLen=end-start
         difCm=endcm-startcm
 
-        return np.array([start, end, difLen,startcm, endcm, difCm,maxPos,result,indexS])
+        return np.array([start, end, difLen,startcm, endcm, difCm,maxPos,result,firstL,indexS])
     
     if __name__ == '__main__':
         
@@ -289,3 +294,5 @@ plt.savefig(f'{args.outname}_diagnostic.png')
 
 
 # In[50]:
+
+
