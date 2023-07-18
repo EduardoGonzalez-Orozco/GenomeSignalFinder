@@ -1,13 +1,15 @@
 
 #####Notes V1.1
 # Eliminating the option --first, so the code will know which was the first level in scan
+#####Notes V1.2
+## Adding a line to indicate significant signals based on sd to the mean 
 
 
 
 
-import numpy as np
 from IPython.display import SVG, display
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from scipy.signal import argrelextrema
 import matplotlib.cm as cm
@@ -18,8 +20,6 @@ import csv
 
 
 
-
-
 ##### Arguments
 
 #Arguments:
@@ -27,6 +27,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Input name should correspond as the same name used in scan or in case of breaker use the generated name before __decomposition_table.pkl or peak_Ids.pkl")
     parser.add_argument("--level", required=True, help="Selected level to visualze")
+    parser.add_argument("--line", default="T", help="If 'T' a line indicating <sdline> standard deviations from mean")
+    parser.add_argument("--sdline", default=1, help="Number of standard deviatons from mean to plot line")
+
+
 
 
    
@@ -143,6 +147,14 @@ ax.ticklabel_format(style='plain')
 ax.set_xlabel('Base Pairs')
 ax2.set_xlabel('Cm')
 ax.legend()
+##### Adding line to indicate significant signals
+flagPlotLine=args.line
+if flagPlotLine == "T":
+    sdVal=int(args.sdline)
+    sdV=np.std(dataOTV)
+    cutoff=value+sdVal*sdV
+    ax2.axhline(y=cutoff, color='r', linestyle='--')
+
 
 plt.savefig(f'{args.input}_Plot_DecomposeSignal_Level_{args.level}.png')
 
