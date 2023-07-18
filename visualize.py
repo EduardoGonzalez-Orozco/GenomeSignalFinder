@@ -8,7 +8,6 @@
 import numpy as np
 from IPython.display import SVG, display
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 from scipy.signal import argrelextrema
 import matplotlib.cm as cm
