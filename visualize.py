@@ -3,7 +3,7 @@
 # Eliminating the option --first, so the code will know which was the first level in scan
 #####Notes V1.2
 ## Adding a line to indicate significant signals based on sd to the mean 
-
+## Option to plot hline of max or min depending on --type argument
 
 
 
@@ -27,6 +27,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Input name should correspond as the same name used in scan or in case of breaker use the generated name before __decomposition_table.pkl or peak_Ids.pkl")
     parser.add_argument("--level", required=True, help="Selected level to visualze")
+    parser.add_argument("--type",default="max", required=True, help="Select the analysis type for finding peak signals: max or min (Deafult:max)")
     parser.add_argument("--line", default="T", help="If 'T' a line indicating <sdline> standard deviations from mean")
     parser.add_argument("--sdline", default=1, help="Number of standard deviatons from mean to plot line")
 
@@ -49,6 +50,7 @@ with open(f'{args.input}_peak_Ids.pkl', "rb") as file:
 
 
 level=int(args.level)
+signalType=str(args.type)
 
 
 # ###Input: Table peak detection
@@ -152,8 +154,13 @@ flagPlotLine=args.line
 if flagPlotLine == "T":
     sdVal=int(args.sdline)
     sdV=np.std(dataOTV)
-    cutoff=value+sdVal*sdV
-    ax2.axhline(y=cutoff, color='r', linestyle='--')
+    cutoff1=value+sdVal*sdV
+    cutoff2=value-sdVal*sdV
+    if(signalType == "max"):
+        ax2.axhline(y=cutoff1, color='r', linestyle='--')
+    if(signalType == "min"):
+        ax2.axhline(y=cutoff2, color='r', linestyle='--')
+
 
 
 plt.savefig(f'{args.input}_Plot_DecomposeSignal_Level_{args.level}.png')
