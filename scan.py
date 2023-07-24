@@ -12,12 +12,13 @@
 ####NOTES:
 #-> Elimininate a bug located in the signal size detection also some "trash" lines 
 ##V1.1
-# -> Eliminate the use of --first in visualize and break (Working on...)
+# -> Eliminate the use of --first in visualize and break 
+##V2:
+#-> Adde the option to identify the max and min signals
 
 
 import sys
 import argparse
-import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -27,12 +28,15 @@ import matplotlib.cm as cm
 from statistics import mode
 import multiprocessing
 import pickle
+import os
+
 
 #Arguments:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, help="Input file coma separated (csv) with: <position Base Pairs>,<position centi morgans>,<value>")
     parser.add_argument("--outname", required=True,help="Output name")
+    parser.add_argument("--type", default="max",required=True,help="Select the analysis type for finding peak signals: max or min (Deafult:max)")
     parser.add_argument("--levels", default=5, help="Maximum decomposition level")
     parser.add_argument("--sd", default=10, help="Number of standard deviations to the mean to denoise")
     parser.add_argument("--tmode", default="soft", help="Threshold mode : 'soft' 'hard' " )
@@ -46,6 +50,7 @@ if __name__ == "__main__":
 
 ######## Reading files 
 
+signalType=str(args.type)
 dataI = np.genfromtxt(args.input, delimiter=',')
 
 pos_index = 0
@@ -133,8 +138,14 @@ for i in range(3, levels+3):
     reconstructVals_results[:, i]=siganlRec2
 
 
-with open(f'{args.outname}_decomposition_table.pkl', "wb") as file_recV:
+
+filenameDTable = f'{args.outname}_decomposition_table.pkl'
+if os.path.exists(filenameDTable):
+    os.remove(filenameDTable)
+
+with open(filenameDTable, "wb") as file_recV:
     pickle.dump(reconstructVals_results, file_recV)
+ 
 
 #################--------- Detecting peaks and estimating emp (Parallel)------####################
 
@@ -153,7 +164,10 @@ for p in range(firstLevel, levels):
     mean_value = np.mean(data)
 
     # Find local maxima
-    maxima_indices = argrelextrema(data, np.greater)[0]
+   
+
+    if (args.type == "min"):
+        maxima_indices = argrelextrema(data, np.less)[0]
 
     # Identify start and end points of each peak
     peak_start_indices = []
@@ -162,39 +176,62 @@ for p in range(firstLevel, levels):
     cenM_end=[]
 
     ####Blank array for results
+    if (signalType == "max"):
+        maxima_indices = argrelextrema(data, np.greater)[0]
+        for min_index in maxima_indices:
+            # Find the left neighbor of the peak
+            left_neighbor = min_index - 1
 
-    for min_index in maxima_indices:
-        # Find the left neighbor of the peak
-        left_neighbor = min_index - 1
+            # Keep moving to the left until the value is higher than the mean or a local maximum is encountered
+            while left_neighbor >= 0 and (data[left_neighbor] >= mean_value):
+                left_neighbor -= 1
 
-        # Keep moving to the left until the value is higher than the mean or a local maximum is encountered
-        while left_neighbor >= 0 and (data[left_neighbor] >= mean_value):
-            left_neighbor -= 1
+            # Find the right neighbor of the peak
+            right_neighbor = min_index + 1
 
-        # Find the right neighbor of the peak
-        right_neighbor = min_index + 1
+            # Keep moving to the right until the value is higher than the mean or a local maximum is encountered
+            while right_neighbor < len(data) and (data[right_neighbor] >= mean_value):
+                right_neighbor += 1
 
-        # Keep moving to the right until the value is higher than the mean or a local maximum is encountered
-        while right_neighbor < len(data) and (data[right_neighbor] >= mean_value):
-            right_neighbor += 1
+            # Add the start and end indices of the peak
+            peak_start_indices.append(left_neighbor + 1)
+            peak_end_indices.append(right_neighbor - 1)
 
-        # Add the start and end indices of the peak
-        peak_start_indices.append(left_neighbor + 1)
-        peak_end_indices.append(right_neighbor - 1)
+####Blank array for results
+    if (signalType == "min"):
+        maxima_indices = argrelextrema(data, np.less)[0]
+        for min_index in maxima_indices:
+            # Find the left neighbor of the peak
+            left_neighbor = min_index - 1
+
+            # Keep moving to the left until the value is higher than the mean or a local maximum is encountered
+            while left_neighbor >= 0 and (data[left_neighbor] <= mean_value):
+                left_neighbor -= 1
+
+            # Find the right neighbor of the peak
+            right_neighbor = min_index + 1
+
+            # Keep moving to the right until the value is higher than the mean or a local maximum is encountered
+            while right_neighbor < len(data) and (data[right_neighbor] <= mean_value):
+                right_neighbor += 1
+
+            # Add the start and end indices of the peak
+            peak_start_indices.append(left_neighbor + 1)
+            peak_end_indices.append(right_neighbor - 1)
 
 
     ##Generating the joined table results for peaks
     firstLevelColumn= np.full(len(peak_end_indices), firstLevel)
     peakDetectionResultsT = np.column_stack((peak_start_indices, peak_end_indices, maxima_indices,firstLevelColumn))
 
-   ###No unique filer Si quieres filro debes comentar esta sección:
+    ###No unique filer Si quieres filro debes comentar esta sección:
     peakDetectionResults=peakDetectionResultsT
 
 
     peak_index=peakDetectionResults[:,2]
 
 
-    def estimate_emp(signalV, noiseV):
+    def estimate_emp_max(signalV, noiseV):
         max_signal_power = np.max(signalV)
         base_lineN=np.mean(noiseV)
         noise=np.var(noiseV)
@@ -203,6 +240,18 @@ for p in range(firstLevel, levels):
 
         emp = ((2*Ht)-(0.5*noise))/noise
         return emp
+    
+
+    def estimate_emp_min(signalV, noiseV):
+        max_signal_power = np.min(signalV)
+        base_lineN=np.mean(noiseV)
+        noise=np.var(noiseV)
+
+        Ht=np.absolute(max_signal_power-base_lineN)
+
+        emp = ((2*Ht)-(0.5*noise))/noise
+        return emp
+
 
 
     # Define a worker function for parallel processing
@@ -226,8 +275,10 @@ for p in range(firstLevel, levels):
 
         maskNoise = (reconstructVals_results[:, 0] < start) | (reconstructVals_results[:, 0] > end)
         noise = reconstructVals_results[maskNoise]
-
-        result = estimate_emp(signal[:, l + 2], noise[:, l + 2])
+        if (signalType == "min"):
+            result = estimate_emp_min(signal[:, l + 2], noise[:, l + 2])
+        if (signalType == "max"):
+            result = estimate_emp_max(signal[:, l + 2], noise[:, l + 2])
 
         difLen=end-start
         difCm=endcm-startcm
@@ -288,9 +339,9 @@ plt.legend(loc='best')
 plt.savefig(f'{args.outname}_diagnostic.png')
 
 
-
-
-
 # In[50]:
+
+
+
 
 
